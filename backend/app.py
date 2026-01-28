@@ -1,5 +1,4 @@
 import os
-
 from flask import Flask
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -19,17 +18,30 @@ def create_app():
 
     app = Flask(__name__)
 
-    client_origin = os.getenv("CLIENT_ORIGIN", "http://localhost:5173")
+    # --------------------------------------------------
+    # CORS CONFIG (FIXED)
+    # --------------------------------------------------
+    client_origin = os.getenv(
+        "CLIENT_ORIGIN",
+        "*"  # allow all origins in production (safe for APIs)
+    )
+
     CORS(
         app,
-        resources={r"/api/*": {"origins": [client_origin]}},
+        resources={r"/api/*": {"origins": client_origin}},
         supports_credentials=False,
         allow_headers=["Content-Type", "Authorization"],
         methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     )
 
+    # --------------------------------------------------
+    # INIT DATABASE
+    # --------------------------------------------------
     init_mongo()
 
+    # --------------------------------------------------
+    # REGISTER ROUTES
+    # --------------------------------------------------
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(analytics_bp, url_prefix="/api/analytics")
     app.register_blueprint(ml_bp, url_prefix="/api/ml")
@@ -38,10 +50,16 @@ def create_app():
     app.register_blueprint(task_bp, url_prefix="/api/tasks")
     app.register_blueprint(schedule_bp, url_prefix="/api/schedule")
 
+    # --------------------------------------------------
+    # HEALTH CHECK
+    # --------------------------------------------------
     @app.get("/api/health")
     def health():
         return {"ok": True, "service": "smart-study-scheduler-api"}
 
+    # --------------------------------------------------
+    # ERROR HANDLERS
+    # --------------------------------------------------
     @app.errorhandler(404)
     def not_found(_e):
         return {"message": "Not found"}, 404
@@ -58,5 +76,8 @@ def create_app():
 app = create_app()
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.getenv("PORT", "5000")), debug=True)
-
+    app.run(
+        host="0.0.0.0",
+        port=int(os.getenv("PORT", "5000")),
+        debug=False,  # NEVER True in production
+    )
