@@ -6,34 +6,54 @@ from src.services.auth_middleware import require_auth
 from src.services.jwt_service import create_access_token
 from src.services.password_service import hash_password, verify_password
 
+# Blueprint
 auth_bp = Blueprint("auth", __name__)
 
-
-@auth_bp.post("/register")
+# -----------------------------
+# Register
+# POST /auth/register
+# -----------------------------
+@auth_bp.route("/register", methods=["POST"])
 def register():
     body = request.get_json(silent=True) or {}
+
     name = (body.get("name") or "").strip()
     email = (body.get("email") or "").strip().lower()
     password = body.get("password") or ""
 
     if not name or not email or not password:
         return {"message": "name, email, and password are required"}, 400
+
     if len(password) < 8:
         return {"message": "Password must be at least 8 characters"}, 400
 
     db = get_db()
-    existing = db.users.find_one({"email": email})
-    if existing:
+
+    if db.users.find_one({"email": email}):
         return {"message": "Email already registered"}, 409
 
-    user = UserCreate(name=name, email=email, password_hash=hash_password(password))
+    user = UserCreate(
+        name=name,
+        email=email,
+        password_hash=hash_password(password),
+    )
+
     result = db.users.insert_one(user.to_doc())
-    return {"ok": True, "userId": str(result.inserted_id)}, 201
+
+    return {
+        "ok": True,
+        "userId": str(result.inserted_id),
+    }, 201
 
 
-@auth_bp.post("/login")
+# -----------------------------
+# Login
+# POST /auth/login
+# -----------------------------
+@auth_bp.route("/login", methods=["POST"])
 def login():
     body = request.get_json(silent=True) or {}
+
     email = (body.get("email") or "").strip().lower()
     password = body.get("password") or ""
 
@@ -42,6 +62,7 @@ def login():
 
     db = get_db()
     user = db.users.find_one({"email": email})
+
     if not user:
         return {"message": "Invalid credentials"}, 401
 
@@ -49,14 +70,22 @@ def login():
         return {"message": "Invalid credentials"}, 401
 
     token = create_access_token(str(user["_id"]))
+
     return {
         "token": token,
-        "user": {"id": str(user["_id"]), "name": user.get("name", ""), "email": user.get("email", "")},
-    }
+        "user": {
+            "id": str(user["_id"]),
+            "name": user.get("name", ""),
+            "email": user.get("email", ""),
+        },
+    }, 200
 
 
-@auth_bp.get("/me")
+# -----------------------------
+# Get Current User
+# GET /auth/me
+# -----------------------------
+@auth_bp.route("/me", methods=["GET"])
 @require_auth
 def me():
-    return {"user": request.user}
-
+    return {"user": request.user}, 200
