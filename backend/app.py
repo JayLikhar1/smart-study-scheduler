@@ -19,11 +19,11 @@ def create_app():
     app = Flask(__name__)
 
     # --------------------------------------------------
-    # CORS CONFIG (FIXED)
+    # CORS CONFIG (PRODUCTION SAFE)
     # --------------------------------------------------
     client_origin = os.getenv(
         "CLIENT_ORIGIN",
-        "*"  # allow all origins in production (safe for APIs)
+        "https://smart-study-scheduler-8b7c-git-main-jaylikhar1s-projects.vercel.app"
     )
 
     CORS(
@@ -79,5 +79,5 @@ if __name__ == "__main__":
     app.run(
         host="0.0.0.0",
         port=int(os.getenv("PORT", "5000")),
-        debug=False,  # NEVER True in production
+        debug=False,
     )
